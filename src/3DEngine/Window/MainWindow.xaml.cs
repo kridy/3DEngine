@@ -52,8 +52,8 @@ namespace _3DEngine.Window
             mesh1.Rotation = new Vector3(-3.2f, 0f, 0f);
             meshes.Add(mesh1);
 
-            meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0));
-            meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0));
+            //meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0));
+            //meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0));
             //meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0)); 
             //meshes.Add(Mesh.LoadMesh(@"resources\monkey.babylon", 0));
 #endif
