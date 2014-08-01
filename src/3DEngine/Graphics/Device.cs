@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 using SharpDX;
-
+using _3DEngine.Window;
 
 
 namespace _3DEngine
@@ -60,7 +61,7 @@ namespace _3DEngine
             }
         }
 
-        public void Render(Camera camera, Mesh[] meshes)
+        public void Render(Camera camera, Mesh[] meshes, IRender render)
         {
 
             var viewMatrix = Matrix.LookAtLH(camera.Position, camera.Target, Vector3.UnitY);
@@ -82,18 +83,8 @@ namespace _3DEngine
 
                 var transformMatrix = worldMatrex*viewMatrix*projectionMatrix;
 
-
-                Parallel.For(0, mesh.Faces.Length, faceIndex =>
-                {
-                    var face = mesh.Faces[faceIndex];
-                    var pointA = Project(mesh.Vertices[face.A], transformMatrix);
-                    var pointB = Project(mesh.Vertices[face.B], transformMatrix);
-                    var pointC = Project(mesh.Vertices[face.C], transformMatrix);
-
-
-                    var color = 0.25f + (faceIndex % mesh.Faces.Length) * 0.75f / mesh.Faces.Length;
-                    DrawTriangle(pointA, pointB, pointC, new Color4(color, color, color, 1));
-                });
+                render.Render(this,mesh,transformMatrix);
+                
             }
         }
 
@@ -104,7 +95,7 @@ namespace _3DEngine
             surface.WritePixels(rect, backBuffer, 4 * renderWidth, 0);
         }
 
-        private Vector3 Project(Vector3 point, Matrix transformMatrix)
+        public Vector3 Project(Vector3 point, Matrix transformMatrix)
         {
             var tPoint = Vector3.TransformCoordinate(point, transformMatrix);
             var x = tPoint.X * renderWidth + renderWidth / 2.0f;
@@ -112,110 +103,29 @@ namespace _3DEngine
             return (new Vector3(x, y, tPoint.Z));
         }
 
-        private void DrawTriangle(Vector3 p1, Vector3 p2, Vector3 p3, Color4 color)
-        {
-            if (p1.Y > p2.Y)
-            {
-                var temp = p2;
-                p2 = p1;
-                p1 = temp;
-            }
 
-            if (p2.Y > p3.Y)
-            {
-                var temp = p2;
-                p2 = p3;
-                p3 = temp;
-            }
 
-            if (p1.Y > p2.Y)
-            {
-                var temp = p2;
-                p2 = p1;
-                p1 = temp;
-            }
-
-            float dP1P2, dP1P3;
-
-            if (p2.Y - p1.Y > 0)
-                dP1P2 = (p2.X - p1.X) / (p2.Y - p1.Y);
-            else
-                dP1P2 = 0;
-
-            if (p3.Y - p1.Y > 0)
-                dP1P3 = (p3.X - p1.X) / (p3.Y - p1.Y);
-            else
-                dP1P3 = 0;
-
-            if (dP1P2 > dP1P3)
-            {
-                for (var y = (int)p1.Y; y <= (int)p3.Y; y++)
-                {
-                    if (y < p2.Y)
-                        ProcessScanLine(y, p1, p3, p1, p2, color);
-                    else
-                        ProcessScanLine(y, p1, p3, p2, p3, color);
-                }
-            }
-            else
-            {
-                for (var y = (int)p1.Y; y <= (int)p3.Y; y++)
-                {
-                    if (y < p2.Y)
-                        ProcessScanLine(y, p1, p2, p1, p3, color);
-                    else
-                        ProcessScanLine(y, p2, p3, p1, p3, color);
-                }
-            }
-        }
-
-        private void ProcessScanLine(int y, Vector3 pa, Vector3 pb, Vector3 pc, Vector3 pd, Color4 color)
-        {
-            var gradient1 = pa.Y != pb.Y ? (y - pa.Y) / (pb.Y - pa.Y) : 1;
-            var gradient2 = pc.Y != pd.Y ? (y - pc.Y) / (pd.Y - pc.Y) : 1;
-
-            var sx = (int)Interpolate(pa.X, pb.X, gradient1);
-            var ex = (int)Interpolate(pc.X, pd.X, gradient2);
-
-            float z1 = Interpolate(pa.Z, pb.Z, gradient1);
-            float z2 = Interpolate(pc.Z, pd.Z, gradient2);
-
-            for (int x = sx; x < ex; x++)
-            {
-                float gradient = (x - sx) / (float)(ex - sx);
-
-                var z = Interpolate(z1, z2, gradient);
-
-                DrawPoint(new Vector3(x, y, z), color);
-            }
-        }
-
-        private float Interpolate(float min, float max, float gradient)
-        {
-            return min + (max - min) * Clamp(gradient);
-        }
-
-        private float Clamp(float value, float min = 0, float max = 1)
-        {
-            return Math.Max(min, Math.Min(value, max));
-        }
-
-        //private void DrawBLine(Vector2 point0, Vector2 point1)
+        //private void DrawBLine(Vector3 point0, Vector3 point1, Color4 color)
         //{
         //    var x0 = (int)point0.X;
         //    var y0 = (int)point0.Y;
+        //    var z0 = (int)point0.Z;
         //    var x1 = (int)point1.X;
         //    var y1 = (int)point1.Y;
+        //    var z1 = (int)point1.Z;
+
 
         //    var dx = Math.Abs(x1 - x0);
         //    var dy = Math.Abs(y1 - y0);
+        //    var dz = Math.Abs(z1 - z0);
         //    var sx = (x0 < x1) ? 1 : -1;
         //    var sy = (y0 < y1) ? 1 : -1;
+        //    var sz = (z0 < z1) ? 1 : -1;
         //    var err = dx - dy;
 
         //    while (true)
         //    {
-        //        DrawPoint(new Vector2(x0, y0), Color.White);
+        //        DrawPoint(new Vector3(x0, y0, z0), color);
 
         //        if ((x0 == x1) && (y0 == y1)) break;
         //        var e2 = 2 * err;
@@ -237,7 +147,7 @@ namespace _3DEngine
         //    DrawLine(middlePoint, point1);
         //}
 
-        private void DrawPoint(Vector3 point, Color4 color)
+        public void DrawPoint(Vector3 point, Color4 color)
         {
             if (!(point.X >= 0) ||
                 !(point.Y >= 0) ||
